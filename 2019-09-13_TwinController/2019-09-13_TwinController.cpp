@@ -33,6 +33,7 @@ float offsetMotor = 0;
 unsigned long currentMilliSeconds;
 
 int enable_Pin = 6;
+int throttlePwm_Pin= 9; // pin 3, 5, 6, 9, 10 11 support pwm
 
 ////////////////////////////////////////////////////////////////////////////
 // initialize perhipicals
@@ -66,10 +67,10 @@ AutoPID throttlePID(&pSmoothMotor, &motorPowerSetpoint, &pwmThrottleOutput, OUTP
 ////////////////////////////////////////////////////////////////////////////
 
 void setup() {  // measure current
-  // set up the LCD's number of columns and rows:
+
   lcd.begin(16, 2);
-//  delay(500);
   pinMode(enable_Pin, INPUT); 
+  pinMode(throttlePwm_Pin, OUTPUT);
   offsetGenerator = generatorCurrentSensor.calibrate(); // this sets the sensors offset.
   offsetMotor = motorCurrentSensor.calibrate();
   
@@ -117,6 +118,7 @@ void loop() {
 		pwmThrottleOutput=0;
 		throttlePID.reset();
 	}
+	analogWrite(throttlePwm_Pin,pwmThrottleOutput);
 
 
 
