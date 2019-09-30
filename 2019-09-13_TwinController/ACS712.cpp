@@ -30,7 +30,7 @@ float ACS712::calibrate() {
 	int samplesCount= 20;
 	for (int i = 0; i < samplesCount; i++) {
 		_zero += analogRead(pin);
-		delay(20);
+		delay(10);
 	}
 	offsetADCpoints = (ADC_SCALE*samplesCount/2-_zero);
 	offsetADCpoints /= samplesCount;
