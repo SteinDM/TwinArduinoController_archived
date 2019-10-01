@@ -5,14 +5,17 @@
 //#include <AltSoftSerial.h>
 #include <SoftwareSerial.h>
 #include "AutoPID.h"
+#include "ReceiveOnlySoftwareSerial.h"
 
 
 ////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////
 // initialize variables
-SoftwareSerial mySerial(10, 6); // RX, TX Not all pins on the Leonardo and Micro support change interrupts, so only the following can be used for RX: 8, 9, 10, 11, 14 (MISO), 15 (SCK), 16 (MOSI).
-uint8_t ui8_rx_buffer [13];
+ReceiveOnlySoftwareSerial  displaySerialRx(10); // RX Not all pins on the Leonardo and Micro support change interrupts, so only the following can be used for RX: 8, 9, 10, 11, 14 (MISO), 15 (SCK), 16 (MOSI).
+ReceiveOnlySoftwareSerial motorSerialRx(8);
+uint8_t ui8_rx_bufferDisplay [17];
+uint8_t ui8_rx_bufferMotor[65];
 int i;
 int enableMotorSignal=0;
 unsigned long previousMillisLCD = 0;           // will store last time LCD was updated
@@ -38,7 +41,7 @@ uint8_t ui8_wheel_size = 0;
 
 unsigned long currentMilliSeconds;
 
-int brake_Pin = 7;
+//int brake_Pin = 8;
 int enable_Pin = 8;
 int throttlePwm_Pin= 9; // pin 3, 5, 6, 9, 10 11 support pwm
 
@@ -74,8 +77,8 @@ AutoPID throttlePID(&pSmoothMotor, &motorPowerSetpoint, &pwmThrottleOutput, OUTP
 ////////////////////////////////////////////////////////////////////////////
 
 void setup() {  // measure current
-	mySerial.begin(9600);
-	mySerial.setTimeout(10);
+	displaySerialRx.begin(9600);
+	displaySerialRx.setTimeout(10);
 	Serial.begin(9600);
 
 	lcd.begin(16, 2);
@@ -131,18 +134,31 @@ void loop() {
 	}
 
 	analogWrite(throttlePwm_Pin,pwmThrottleOutput);
-// read power setting trough serial connection
-//	mySerial.
-	  if (mySerial.available())
-//	    Serial.write(mySerial.read());
-		  mySerial.readBytesUntil('x',ui8_rx_buffer,14);
-	    Serial.write(ui8_rx_buffer[5]);
+// read power from display trough serial connection
+	  if (displaySerialRx.available())
+		  //firs bit seems to always be 16 as a checksum thing
+		displaySerialRx.readBytesUntil('x',ui8_rx_bufferDisplay,17);
+	    Serial.write(ui8_rx_bufferDisplay[5]);
+		ui8_light_On = ui8_rx_bufferDisplay [1] >> 7;
+		ui8_WalkModus_On = (ui8_rx_bufferDisplay [1] & 7)==6;
+		ui8_assist_level = ui8_rx_bufferDisplay [1] & 7;
+		ui8_max_speed = 10 + ((ui8_rx_bufferDisplay [2] & 248) >> 3) | (ui8_rx_bufferDisplay [4] & 32);
+		ui8_wheel_size = ((ui8_rx_bufferDisplay [4] & 192) >> 6) | ((ui8_rx_bufferDisplay [2] & 7) << 2);
 
-		ui8_light_On = ui8_rx_buffer [1] >> 7;
-		ui8_WalkModus_On = (ui8_rx_buffer [1] & 7)==6;
-		ui8_assist_level = ui8_rx_buffer [1] & 7;
-		ui8_max_speed = 10 + ((ui8_rx_buffer [2] & 248) >> 3) | (ui8_rx_buffer [4] & 32);
-		ui8_wheel_size = ((ui8_rx_buffer [4] & 192) >> 6) | ((ui8_rx_buffer [2] & 7) << 2);
+//read motor stats from controller trough second serial connection
+			//First bite seems to always be 65 as a checksum thing
+		  if (motorSerialRx.available())
+			  //firs bit seems to always be 16 as a checksum thing
+			  motorSerialRx.readBytesUntil('x',ui8_rx_bufferMotor,65);
+		    Serial.write(ui8_rx_bufferMotor[5]);
+
+		    ui8_motorRxPackageChecksum = ui8_rx_bufferMotor [1];
+		    ui8_battery_soc = ui8_rx_bufferMotor [1];
+			ui8_nominalBatteryVoltage = ui8_rx_bufferMotor [2];
+			ui8_WalkModus_On = (ui8_rx_bufferMotor [1] & 7)==6;
+			ui8_assist_level = ui8_rx_bufferMotor [1] & 7;
+			ui8_max_speed = 10 + ((ui8_rx_bufferDisplay [2] & 248) >> 3) | (ui8_rx_bufferDisplay [4] & 32);
+			ui8_wheel_size = ((ui8_rx_bufferDisplay [4] & 192) >> 6) | ((ui8_rx_bufferDisplay [2] & 7) << 2);
 
 
 //Write stuff to lcd
@@ -162,15 +178,15 @@ void loop() {
 
 		//lcd.print("abcd");
 		//incomingChar="abcd";
-		lcd.print(ui8_light_On);
+		lcd.print(ui8_rx_bufferDisplay [1]);
 		lcd.print(" ");
-		lcd.print(ui8_WalkModus_On);
+		lcd.print(ui8_rx_bufferDisplay [2]);
 		lcd.print(" ");
-		lcd.print(ui8_assist_level);
+		lcd.print(ui8_rx_bufferDisplay [3]);
 		lcd.print(" ");
-		lcd.print(ui8_max_speed);
+		lcd.print(ui8_rx_bufferDisplay [0]);
 		lcd.print(" ");
-		lcd.print(ui8_wheel_size);
+		lcd.print(ui8_rx_bufferDisplay [8]);
 		lcd.print(" ");
 
 		lcd.setCursor(0, 1);
