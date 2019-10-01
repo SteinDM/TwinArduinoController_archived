@@ -2,14 +2,17 @@
 #include "Ewma.h"
 #include "ACS712.h"
 #include <LiquidCrystal.h>
+//#include <AltSoftSerial.h>
+#include <SoftwareSerial.h>
 #include "AutoPID.h"
-//#include "AutoPID.cpp"
+
 
 ////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////
 // initialize variables
-
+SoftwareSerial mySerial(10, 6); // RX, TX Not all pins on the Leonardo and Micro support change interrupts, so only the following can be used for RX: 8, 9, 10, 11, 14 (MISO), 15 (SCK), 16 (MOSI).
+uint8_t ui8_rx_buffer [13];
 int i;
 int enableMotorSignal=0;
 unsigned long previousMillisLCD = 0;           // will store last time LCD was updated
@@ -20,11 +23,18 @@ const long lCDWriteInterval = 300;        // interval at which to write lcd
 const long currentMotorMeasureInterval = 10;    // interval at which to measure current
 const long currentGeneratorMeasureInterval = 10;    // interval at which to measure current
 const long throttelUpdateInterval=20;
+
+
 float iSmoothMotor=0;
 double pSmoothMotor=0;
 float iSmoothGenerator=0;
 double pSmoothGenerator=0;
 float batteryVoltage=40;
+uint8_t ui8_light_On = 0;
+uint8_t ui8_WalkModus_On = 0;
+uint8_t ui8_assist_level = 0;
+uint8_t ui8_max_speed = 0;
+uint8_t ui8_wheel_size = 0;
 
 unsigned long currentMilliSeconds;
 
@@ -64,16 +74,19 @@ AutoPID throttlePID(&pSmoothMotor, &motorPowerSetpoint, &pwmThrottleOutput, OUTP
 ////////////////////////////////////////////////////////////////////////////
 
 void setup() {  // measure current
+	mySerial.begin(9600);
+	mySerial.setTimeout(10);
+	Serial.begin(9600);
 
-  lcd.begin(16, 2);
-  pinMode(enable_Pin, INPUT); 
-  pinMode(throttlePwm_Pin, OUTPUT);
-  generatorCurrentSensor.calibrate(); // this sets the sensors offset.
-  motorCurrentSensor.calibrate();
-  
-  throttlePID.setBangBang(OUTPUT_MIN,OUTPUT_MAX);
-  throttlePID.setTimeStep(throttelUpdateInterval);
-  throttlePID.reset();
+	lcd.begin(16, 2);
+	pinMode(enable_Pin, INPUT);
+	pinMode(throttlePwm_Pin, OUTPUT);
+	generatorCurrentSensor.calibrate(); // this sets the sensors offset.
+	motorCurrentSensor.calibrate();
+
+	throttlePID.setBangBang(OUTPUT_MIN,OUTPUT_MAX);
+	throttlePID.setTimeStep(throttelUpdateInterval);
+	throttlePID.reset();
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -118,14 +131,25 @@ void loop() {
 	}
 
 	analogWrite(throttlePwm_Pin,pwmThrottleOutput);
+// read power setting trough serial connection
+//	mySerial.
+	  if (mySerial.available())
+//	    Serial.write(mySerial.read());
+		  mySerial.readBytesUntil('x',ui8_rx_buffer,14);
+	    Serial.write(ui8_rx_buffer[5]);
 
+		ui8_light_On = ui8_rx_buffer [1] >> 7;
+		ui8_WalkModus_On = (ui8_rx_buffer [1] & 7)==6;
+		ui8_assist_level = ui8_rx_buffer [1] & 7;
+		ui8_max_speed = 10 + ((ui8_rx_buffer [2] & 248) >> 3) | (ui8_rx_buffer [4] & 32);
+		ui8_wheel_size = ((ui8_rx_buffer [4] & 192) >> 6) | ((ui8_rx_buffer [2] & 7) << 2);
 
 
 //Write stuff to lcd
 	if (currentMilliSeconds - previousMillisLCD>= lCDWriteInterval){
 
 		lcd.setCursor(0,0);
-		lcd.print(String("Im="));
+		/*lcd.print(String("Im="));
 		if (iSmoothMotor>=0){
 		  lcd.print(" ");
 		  }
@@ -134,7 +158,20 @@ void loop() {
 		lcd.setCursor(10,0);
 		lcd.print("En=");
 		lcd.print(digitalRead(enable_Pin));
+		*/
 
+		//lcd.print("abcd");
+		//incomingChar="abcd";
+		lcd.print(ui8_light_On);
+		lcd.print(" ");
+		lcd.print(ui8_WalkModus_On);
+		lcd.print(" ");
+		lcd.print(ui8_assist_level);
+		lcd.print(" ");
+		lcd.print(ui8_max_speed);
+		lcd.print(" ");
+		lcd.print(ui8_wheel_size);
+		lcd.print(" ");
 
 		lcd.setCursor(0, 1);
 		lcd.print("Ig=");
