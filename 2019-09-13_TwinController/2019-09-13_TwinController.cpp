@@ -14,7 +14,7 @@
 // initialize variables
 ReceiveOnlySoftwareSerial  displaySerialRx(10); // RX Not all pins on the Leonardo and Micro support change interrupts, so only the following can be used for RX: 8, 9, 10, 11, 14 (MISO), 15 (SCK), 16 (MOSI).
 ReceiveOnlySoftwareSerial motorSerialRx(8);
-uint8_t ui8_rx_bufferDisplay [13];
+uint8_t ui8_rx_bufferDisplay [16];
 uint8_t ui8_rx_bufferMotor[11];
 int i;
 int enableMotorSignal=0;
@@ -42,7 +42,7 @@ uint8_t ui8_max_speed = 0;
 uint8_t ui8_wheel_size = 0;
 
 //variables controller
-uint8_t ui8_motorRxPackageChecksum;
+uint8_t ui8_motorStartByte;
 uint8_t ui8_battery_soc;
 uint8_t ui8_nominalBatteryVoltage;
 uint16_t ui16_wheel_period_ms;
@@ -54,7 +54,7 @@ uint8_t ui8_BatteryCurrent;  //4x controller current
 unsigned long currentMilliSeconds;
 
 //int brake_Pin = 8;
-int enable_Pin = 7;
+int enable_Pin = 13;
 int throttlePwm_Pin= 9; // pin 3, 5, 6, 9, 10 11 support pwm
 
 ////////////////////////////////////////////////////////////////////////////
@@ -91,7 +91,10 @@ AutoPID throttlePID(&pSmoothMotor, &motorPowerSetpoint, &pwmThrottleOutput, OUTP
 void setup() {  // measure current
 	displaySerialRx.begin(9600);
 	displaySerialRx.setTimeout(10);
-	Serial.begin(9600);
+//	motorSerialRx.begin(9600);
+//	motorSerialRx.end();
+//	motorSerialRx.setTimeout(10);
+//	Serial.begin(9600);
 
 	lcd.begin(16, 2);
 	pinMode(enable_Pin, INPUT);
@@ -149,7 +152,7 @@ void loop() {
 // read power from display trough serial connection
 	  if (displaySerialRx.available()){
 		  //firs bit seems to always be 16 as a checksum thing
-		displaySerialRx.readBytesUntil('x',ui8_rx_bufferDisplay,13);
+		displaySerialRx.readBytesUntil('x',ui8_rx_bufferDisplay,16);
 
 		ui8_light_On = ui8_rx_bufferDisplay [1] >> 7;
 		ui8_WalkModus_On = (ui8_rx_bufferDisplay [1] & 7)==6;
@@ -160,19 +163,19 @@ void loop() {
 
 //read motor stats from controller trough second serial connection
 			//First bit seems to always be 65 as a checksum thing
-		  if (motorSerialRx.available()){
-			  //first bit seems to always be 16 as a checksum thing
-			  motorSerialRx.readBytesUntil('x',ui8_rx_bufferMotor,11);
+/*	  if (motorSerialRx.available()){
+		  //first bit seems to always be 16 as a checksum thing
+		  motorSerialRx.readBytesUntil('x',ui8_rx_bufferMotor,11);
 
-		    ui8_motorRxPackageChecksum = ui8_rx_bufferMotor [1];
-		    ui8_battery_soc = ui8_rx_bufferMotor [1];
-			ui8_nominalBatteryVoltage = ui8_rx_bufferMotor [2];
-			ui16_wheel_period_ms=ui8_rx_bufferMotor [3]<<8+ui8_rx_bufferMotor [4];//			ui8_tx_buffer [3] = (ui16_wheel_period_ms >> 8) & 0xff;			ui8_tx_buffer [4] = ui16_wheel_period_ms & 0xff;
-			ui8_crcBit=ui8_rx_bufferMotor [6];
-			ui8_MovingModeIndication = ui8_rx_bufferMotor [7];
-			ui8_BatteryCurrent= ui8_rx_bufferMotor [8];  //4x controller current
-		  }
-
+		ui8_motorStartByte = ui8_rx_bufferMotor [0];
+		ui8_battery_soc = ui8_rx_bufferMotor [1];
+		ui8_nominalBatteryVoltage = ui8_rx_bufferMotor [2];
+		ui16_wheel_period_ms=ui8_rx_bufferMotor [3]<<8+ui8_rx_bufferMotor [4];//			ui8_tx_buffer [3] = (ui16_wheel_period_ms >> 8) & 0xff;			ui8_tx_buffer [4] = ui16_wheel_period_ms & 0xff;
+		ui8_crcBit=ui8_rx_bufferMotor [6];
+		ui8_MovingModeIndication = ui8_rx_bufferMotor [7];
+		ui8_BatteryCurrent= ui8_rx_bufferMotor [8];  //4x controller current
+	  }
+*/
 
 
 //Write stuff to lcd
