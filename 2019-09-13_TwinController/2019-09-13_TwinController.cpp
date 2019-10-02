@@ -3,7 +3,7 @@
 #include "ACS712.h"
 #include <LiquidCrystal.h>
 //#include <AltSoftSerial.h>
-#include <SoftwareSerial.h>
+//#include <SoftwareSerial.h>
 #include "AutoPID.h"
 #include "ReceiveOnlySoftwareSerial.h"
 
@@ -150,7 +150,7 @@ void loop() {
 	  if (displaySerialRx.available()){
 		  //firs bit seems to always be 16 as a checksum thing
 		displaySerialRx.readBytesUntil('x',ui8_rx_bufferDisplay,13);
-	    Serial.write(ui8_rx_bufferDisplay[5]);
+
 		ui8_light_On = ui8_rx_bufferDisplay [1] >> 7;
 		ui8_WalkModus_On = (ui8_rx_bufferDisplay [1] & 7)==6;
 		ui8_assist_level = ui8_rx_bufferDisplay [1] & 7;
@@ -163,7 +163,6 @@ void loop() {
 		  if (motorSerialRx.available()){
 			  //first bit seems to always be 16 as a checksum thing
 			  motorSerialRx.readBytesUntil('x',ui8_rx_bufferMotor,11);
-		    Serial.write(ui8_rx_bufferMotor[5]);
 
 		    ui8_motorRxPackageChecksum = ui8_rx_bufferMotor [1];
 		    ui8_battery_soc = ui8_rx_bufferMotor [1];
