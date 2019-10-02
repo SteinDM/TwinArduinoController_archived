@@ -44,7 +44,7 @@ http://arduiniana.org.
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include <Arduino.h>
-#include <ReceiveOnlySoftwareSerial.h>
+#include "ReceiveOnlySoftwareSerial.h"
 //
 // Lookup table
 //
