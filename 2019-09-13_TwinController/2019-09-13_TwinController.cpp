@@ -8,6 +8,7 @@
 #include "ReceiveOnlySoftwareSerial.h"
 
 
+
 ////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////
@@ -112,6 +113,8 @@ void setup() {  // measure current
 //	throttlePID.setBangBang(OUTPUT_MIN,PWM_OUTPUT_MAX);
 	throttlePID.setTimeStep(throttelUpdateInterval);
 	throttlePID.reset();
+
+
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -131,9 +134,9 @@ if (displaySerialRx.available()){
 	if (ui8_startBitDisplaySerial==16){
 		//ui8_light_On = ui8_rx_bufferDisplay [1] >> 7;
 		//ui8_WalkModus_On = (ui8_rx_bufferDisplay [1] & 7)==6;
-//		if (ui8_assist_level != ui8_rx_bufferDisplay [1] & 7){
+		if (ui8_assist_level != ui8_rx_bufferDisplay [1] & 7){
 			ui8_assist_level = (ui8_rx_bufferDisplay [1] & 7);
-//			}
+			}
 		//ui8_max_speed = 10 + ((ui8_rx_bufferDisplay [2] & 248) >> 3) | (ui8_rx_bufferDisplay [4] & 32);
 		//ui8_wheel_size = ((ui8_rx_bufferDisplay [4] & 192) >> 6) | ((ui8_rx_bufferDisplay [2] & 7) << 2);
 	}
@@ -234,42 +237,40 @@ analogWrite(throttlePwm_Pin,pwmThrottleOutput);
 	if (currentMilliSeconds - previousMillisLCD>= lCDWriteInterval){
 
 		lcd.setCursor(0,0);
-		/*lcd.print(String("Im="));
-		if (iSmoothMotor>=0){
-		  lcd.print(" ");
-		  }
-		lcd.print(iSmoothMotor);
-		lcd.print( "A");
+		/*
 		lcd.setCursor(10,0);
 		lcd.print("En=");
 		lcd.print(digitalRead(enable_Pin));
 		*/
-
 		lcd.print("B");
 		lcd.print(brakeActiveSignal);
 		lcd.print(" ");
 		lcd.print("G");
 		lcd.print(generatorRunning);
 		lcd.print(" ");
-		lcd.print(ui8_rx_bufferDisplay [4]);
+		lcd.print("A");
+		lcd.print(ui8_assist_level);
 		lcd.print(" ");
-		lcd.print(ui8_rx_bufferDisplay [ui8_assist_level]);
-		lcd.print(" ");
+		lcd.print(String("Im="));
+				if (iSmoothMotor>=0){
+				  lcd.print(" ");
+				  }
+		lcd.print(iSmoothMotor,1);
+		lcd.print( "A");
 
 		lcd.setCursor(0, 1);
 		lcd.print("Ig=");
 		if (iSmoothGenerator>=0){
 		  lcd.print(" ");
 		  }
-		lcd.print(iSmoothGenerator);
+		lcd.print(iSmoothGenerator,1);
 		lcd.print(" ");
 		lcd.print("A");
 		lcd.setCursor(9,1);
 		lcd.print("pwm=");
-		lcd.print(pwmThrottleOutput);
-
-
-
+		if (pwmThrottleOutput<10) lcd.print(" ");
+		if (pwmThrottleOutput<100) lcd.print(" ");
+		lcd.print(pwmThrottleOutput,0);
 		previousMillisLCD=currentMilliSeconds;
 		}
 }
