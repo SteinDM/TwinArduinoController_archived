@@ -194,28 +194,28 @@ if (currentMilliSeconds - previousMillisIMotor >= currentMotorMeasureInterval){
 
 // Case 3 - motor is running normally
 	else if (!brakeActiveSignal&&generatorRunning&&pwmThrottleOutput){
-		//Calculate uphill power assist level
+/*		//Calculate uphill power assist level
 		if ((currentMilliSeconds - previousMillisUphillAssist)>= uphillAssistUpdateInterval){
 			if ((pwmThrottleOutput<PWM_OUTPUT_MIN+50)&&uphillAssistPower<1000) {uphillAssistPower++;}
-			if ((pwmThrottleOutput<PWM_OUTPUT_MIN+10)&&uphillAssistPower>800) {uphillAssistPower--;}
-			if (pwmThrottleOutput>PWM_OUTPUT_MIN+150&&uphillAssistPower>0)uphillAssistPower--;
+			else if ((pwmThrottleOutput<PWM_OUTPUT_MIN+100)&&uphillAssistPower<800) {uphillAssistPower++;}
+			else if (pwmThrottleOutput>PWM_OUTPUT_MIN+150&&uphillAssistPower>0)uphillAssistPower--;
 			previousMillisUphillAssist=currentMilliSeconds;
-		}
+		}*/
 		// set the motor power
 		motorPowerSetpoint = (pSmoothGenerator*ui8_assist_level)+pSmoothGenerator + uphillAssistPower; // assist will equal the generated power * the assist level on the steering wheel + the uphill aid
 		throttlePID.run();
 	}
 // Case 4 - motor is enabled and brake is set
 	else if ((brakeActiveSignal&&(generatorRunning||!generatorRunning)&&pwmThrottleOutput)){
-//		if (pwmThrottleOutput>PWM_OUTPUT_MIN){
+		if (pwmThrottleOutput>PWM_OUTPUT_MIN){
 		motorPowerSetpoint = -500;//*(pwmThrottleOutput-PWM_OUTPUT_MIN)/(PWM_OUTPUT_MAX-PWM_OUTPUT_MIN);  //...500... watt max, ramping down linearly - means constant torque
 		throttlePID.run();
-/*		}
+		}
 		else {  // motor stopped
 			motorPowerSetpoint=0;
 			throttlePID.reset();
 			pwmThrottleOutput=0;
-		}*/
+		}
 		uphillAssistPower=0; // reset uphill asist power
 	}
 //Case 5 - motor is enabled and we're coasting
@@ -223,12 +223,12 @@ if (currentMilliSeconds - previousMillisIMotor >= currentMotorMeasureInterval){
 		if (pwmThrottleOutput>PWM_OUTPUT_MIN){
 		motorPowerSetpoint = -50;//*(pwmThrottleOutput-PWM_OUTPUT_MIN)/(PWM_OUTPUT_MAX-PWM_OUTPUT_MIN); //...50... watt coast brake, ramping down linearly - means constant torque
 		throttlePID.run();
-/*		}
+		}
 		else {  // motor stopped
 			motorPowerSetpoint=0;
 			pwmThrottleOutput=0;
 			throttlePID.reset();
-*/		}
+		}
 		uphillAssistPower=0; // reset uphill asist power
 	}
 
