@@ -58,16 +58,14 @@ void AutoPID::run() {
       _lastStep = millis();
       double _error = *_setpoint - *_input;
       _integral += (_error + _previousError) / 2 * _dT / 1000.0;   //Riemann sum integral
-      //_integral = constrain(_integral, _outputMin/_Ki, _outputMax/_Ki);
+      _integral = constrain(_integral*_Ki, _outputMin, _outputMax);
       double _dError = (_error - _previousError) / _dT / 1000.0;   //derivative
-
       _previousError = _error;
       double PID = (_Kp * _error) + (_Ki * _integral) + (_Kd * _dError)+ _outputMin;
       if (PID<_outputMin) PID=_outputMin;
       if (PID> _outputMax) PID=_outputMax;
-      _previousError = _error;
       //*_output = _outputMin + (constrain(PID, 0, 1) * (_outputMax - _outputMin));
-      *_output = PID; //constrain(PID, _outputMin, _outputMax);
+      *_output = constrain(PID, _outputMin, _outputMax);
 
     }
   }

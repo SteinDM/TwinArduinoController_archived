@@ -31,7 +31,7 @@ const long lCDWriteInterval = 300;        			// interval at which to write lcd
 const long currentMotorMeasureInterval = 10;    	// interval at which to measure current
 const long currentGeneratorMeasureInterval = 10;    // interval at which to measure current
 const long throttelUpdateInterval=10;
-const long uphillAssistUpdateInterval = 5;   	 	// interval at which update the Uphill assist level ms - if 5 it means 5 seconds before full uphill assist level (1000w) and so on...
+const long uphillAssistUpdateInterval = 10;   	 	// interval at which update the Uphill assist level ms - if 5 it means 5 seconds before full uphill assist level (1000w) and so on...
 
 //variables current sensors
 float iSmoothMotor=0;
@@ -78,7 +78,7 @@ ACS712 motorCurrentSensor(ACS712_30A,A1);
 #define PWM_OUTPUT_MAX 214 		//(4.2v? ->255/5*4.2=214 )
 #define KP 0.2//.12				// proportional - 0.2 seems to be a good value.
 #define KI 0.1 //.0003			// Integral - 1 seems to be ok
-#define KD 100	//.0001   0.0001
+#define KD 0	//.0001   0.0001
 
 ////////////////////////////////////////////////////////////////////////////
 //
@@ -88,9 +88,9 @@ ACS712 motorCurrentSensor(ACS712_30A,A1);
 //Initializes Filters and regulators
 Ewma adcFilterGenerator(0.01);		// smoothing of input signals
 Ewma adcFilterMotor(0.1);			// higher means faster but more likely to oscillate- 0.1 seems to be the highest value not resulting in oscillations when pedaqling and measuring every 10ms
-double motorPower = 0, pwmThrottleOutput =0, motorPowerSetpoint = 0;
+double motorPower = 0, motorRunning =0, motorPowerSetpoint = 0;
 int16_t uphillAssistPower = 0;
-AutoPID throttlePID(&pSmoothMotor, &motorPowerSetpoint, &pwmThrottleOutput, PWM_OUTPUT_MIN, PWM_OUTPUT_MAX, KP, KI, KD);	//Pid controller here//input/output variables passed by reference, so they are updated automatically
+AutoPID throttlePID(&pSmoothMotor, &motorPowerSetpoint, &motorRunning, PWM_OUTPUT_MIN, PWM_OUTPUT_MAX, KP, KI, KD);	//Pid controller here//input/output variables passed by reference, so they are updated automatically
 
 
 ////////////////////////////////////////////////////////////////////////////
@@ -176,64 +176,64 @@ if (currentMilliSeconds - previousMillisIMotor >= currentMotorMeasureInterval){
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Case 1 - standstill and motor disabled (cover 3 states)
-	if (((!brakeActiveSignal||brakeActiveSignal)&&!generatorRunning&&!pwmThrottleOutput)||(brakeActiveSignal&&generatorRunning&&!pwmThrottleOutput)){
+	if (((!brakeActiveSignal||brakeActiveSignal)&&!generatorRunning&&!motorRunning)||(brakeActiveSignal&&generatorRunning&&!motorRunning)){
 		// three cases where motor is disabled - brake set and generator running - generator not running
 		motorPowerSetpoint=0;
-		pwmThrottleOutput=0;
+		motorRunning=0;
 		throttlePID.reset();
 	}
 // Case 2 - motor starts running
-	else if (!brakeActiveSignal&&generatorRunning&&!pwmThrottleOutput){
+	else if (!brakeActiveSignal&&generatorRunning&&!motorRunning){
 		//brakes disengaged and generator is running -> start the motor
-		if (pwmThrottleOutput<PWM_OUTPUT_MIN) {pwmThrottleOutput=PWM_OUTPUT_MIN;}
-		if (uphillAssistPower>0)uphillAssistPower=0;
-
+		throttlePID.reset();
+		if (motorRunning<PWM_OUTPUT_MIN) {motorRunning=PWM_OUTPUT_MIN;}
+		if (uphillAssistPower!=0)uphillAssistPower=0;
 		motorPowerSetpoint = (pSmoothGenerator*ui8_assist_level)+pSmoothGenerator + uphillAssistPower; // assist will equal the generated power * the assist level on the steering wheel + the uphill aid
 		throttlePID.run();
 	}
 
 // Case 3 - motor is running normally
-	else if (!brakeActiveSignal&&generatorRunning&&pwmThrottleOutput){
-/*		//Calculate uphill power assist level
+	else if (!brakeActiveSignal&&generatorRunning&&motorRunning){
+		//Calculate uphill power assist level
 		if ((currentMilliSeconds - previousMillisUphillAssist)>= uphillAssistUpdateInterval){
-			if ((pwmThrottleOutput<PWM_OUTPUT_MIN+50)&&uphillAssistPower<1000) {uphillAssistPower++;}
-			else if ((pwmThrottleOutput<PWM_OUTPUT_MIN+100)&&uphillAssistPower<800) {uphillAssistPower++;}
-			else if (pwmThrottleOutput>PWM_OUTPUT_MIN+150&&uphillAssistPower>0)uphillAssistPower--;
+			if ((motorRunning<PWM_OUTPUT_MIN+80)&&uphillAssistPower<1000) {uphillAssistPower++;}
+			if ((motorRunning>PWM_OUTPUT_MIN+80)&&(motorRunning<PWM_OUTPUT_MIN+100)&&uphillAssistPower>500) {uphillAssistPower--;}
+			if (motorRunning>PWM_OUTPUT_MIN+150&&uphillAssistPower>0)uphillAssistPower--;
 			previousMillisUphillAssist=currentMilliSeconds;
-		}*/
+		}
 		// set the motor power
 		motorPowerSetpoint = (pSmoothGenerator*ui8_assist_level)+pSmoothGenerator + uphillAssistPower; // assist will equal the generated power * the assist level on the steering wheel + the uphill aid
 		throttlePID.run();
 	}
 // Case 4 - motor is enabled and brake is set
-	else if ((brakeActiveSignal&&(generatorRunning||!generatorRunning)&&pwmThrottleOutput)){
-		if (pwmThrottleOutput>PWM_OUTPUT_MIN){
-		motorPowerSetpoint = -500;//*(pwmThrottleOutput-PWM_OUTPUT_MIN)/(PWM_OUTPUT_MAX-PWM_OUTPUT_MIN);  //...500... watt max, ramping down linearly - means constant torque
+	else if ((brakeActiveSignal&&(generatorRunning||!generatorRunning)&&motorRunning)){
+		if (motorRunning>PWM_OUTPUT_MIN){
+		motorPowerSetpoint = -500*(motorRunning-PWM_OUTPUT_MIN)/(PWM_OUTPUT_MAX-PWM_OUTPUT_MIN);  //...500... watt max, ramping down linearly - means constant torque
 		throttlePID.run();
 		}
 		else {  // motor stopped
 			motorPowerSetpoint=0;
 			throttlePID.reset();
-			pwmThrottleOutput=0;
+			motorRunning=0;
 		}
 		uphillAssistPower=0; // reset uphill asist power
 	}
 //Case 5 - motor is enabled and we're coasting
-	else if (!brakeActiveSignal&&!generatorRunning&&pwmThrottleOutput){
-		if (pwmThrottleOutput>PWM_OUTPUT_MIN){
-		motorPowerSetpoint = -50;//*(pwmThrottleOutput-PWM_OUTPUT_MIN)/(PWM_OUTPUT_MAX-PWM_OUTPUT_MIN); //...50... watt coast brake, ramping down linearly - means constant torque
+	else if (!brakeActiveSignal&&!generatorRunning&&motorRunning){
+		if (motorRunning>PWM_OUTPUT_MIN){
+		motorPowerSetpoint = -50*(motorRunning-PWM_OUTPUT_MIN)/(PWM_OUTPUT_MAX-PWM_OUTPUT_MIN); //...50... watt coast brake, ramping down linearly - means constant torque
 		throttlePID.run();
 		}
-		else {  // motor stopped
+/*		else {  // motor stopped
 			motorPowerSetpoint=0;
 			pwmThrottleOutput=0;
 			throttlePID.reset();
 		}
-		uphillAssistPower=0; // reset uphill asist power
+		uphillAssistPower=0; // reset uphill asist power*/
 	}
 
 
-analogWrite(throttlePwm_Pin,pwmThrottleOutput);
+analogWrite(throttlePwm_Pin,motorRunning);
 
 //Write stuff to lcd
 	if (currentMilliSeconds - previousMillisLCD>= lCDWriteInterval){

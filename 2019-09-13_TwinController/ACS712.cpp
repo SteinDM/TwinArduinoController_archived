@@ -6,13 +6,13 @@ float offsetADCpoints;
 ACS712::ACS712(ACS712_type type, uint8_t _pin) {
 	switch (type) {
 		case ACS712_05B:
-			sensitivity = 185;
+			sensitivity = 185;  //185mv/a
 			break;
 		case ACS712_20A:
-			sensitivity = 100;
+			sensitivity = 100;	//100mv/a
 			break;
 		case ACS712_30A:
-			sensitivity = 66;
+			sensitivity = 66;	//66mv/a
 			break;
 		default:
 			sensitivity = 66;
