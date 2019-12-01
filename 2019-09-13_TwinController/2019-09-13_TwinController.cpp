@@ -27,9 +27,9 @@ unsigned long previousMillisLCD = 0;           		// will store last time LCD was
 unsigned long previousMillisIMotor = 0;           	// will store last time motor current was measured
 unsigned long previousMillisIGenerator=0;
 unsigned long lastThrottleUpdate=0;
-const long lCDWriteInterval = 300;        			// interval at which to write lcd
-const long currentMotorMeasureInterval = 10;    	// interval at which to measure current
-const long currentGeneratorMeasureInterval = 10;    // interval at which to measure current
+const long lCDWriteInterval = 500;        			// interval at which to write lcd
+const long currentMotorMeasureInterval = 20;    	// interval at which to measure current
+const long currentGeneratorMeasureInterval = 20;    // interval at which to measure current
 const long throttelUpdateInterval=10;
 const long uphillAssistUpdateInterval = 10;   	 	// interval at which update the Uphill assist level ms - if 5 it means 5 seconds before full uphill assist level (1000w) and so on...
 
@@ -40,7 +40,7 @@ float iSmoothGenerator=0;
 double pSmoothGenerator=0;
 
 //variables display
-float batteryVoltage=40;
+float batteryVoltage=50;
 uint8_t ui8_startBitDisplaySerial = 0;
 uint8_t ui8_light_On = 0;
 uint8_t ui8_WalkModus_On = 0;
@@ -86,7 +86,7 @@ ACS712 motorCurrentSensor(ACS712_30A,A1);
 
 ////////////////////////////////////////////////////////////////////////////
 //Initializes Filters and regulators
-Ewma adcFilterGenerator(0.01);		// smoothing of input signals
+Ewma adcFilterGenerator(0.005);		// smoothing of input signals
 Ewma adcFilterMotor(0.1);			// higher means faster but more likely to oscillate- 0.1 seems to be the highest value not resulting in oscillations when pedaqling and measuring every 10ms
 double motorPower = 0, motorRunning =0, motorPowerSetpoint = 0;
 int16_t uphillAssistPower = 0;
@@ -244,32 +244,37 @@ analogWrite(throttlePwm_Pin,motorRunning);
 		lcd.print("En=");
 		lcd.print(digitalRead(enable_Pin));
 		*/
-		lcd.print("B");
-		lcd.print(brakeActiveSignal);
-		lcd.print(" ");
-		lcd.print("G");
-		lcd.print(generatorRunning);
-		lcd.print(" ");
-		lcd.print("A");
-		lcd.print(ui8_assist_level);
-		lcd.print(" ");
-		lcd.print(String("M="));
-				if (iSmoothMotor>=0){
+//		lcd.print("B");
+//		lcd.print(brakeActiveSignal);
+//		lcd.print(" ");
+		lcd.print("M ");
+		if (iSmoothMotor>=0){
+		  lcd.print(" ");
+		  }
+		lcd.print(iSmoothMotor,2);
+//		lcd.print(" ");
+		lcd.print("A  ");
+//		lcd.print(ui8_assist_level);
+		lcd.setCursor(10,0);
+//		lcd.print("  ");
+//		lcd.print(String("M="));
+				if (iSmoothMotor<0){
 				  lcd.print(" ");
 				  }
-		lcd.print(pSmoothMotor,1);
-		lcd.print( "W");
+		lcd.print(pSmoothMotor,0);
+		lcd.print( "W   ");
 
 		lcd.setCursor(0, 1);
-		lcd.print("G=");
+		lcd.print("G ");
 		if (iSmoothGenerator>=0){
 		  lcd.print(" ");
 		  }
-		lcd.print(iSmoothGenerator,1);
-		lcd.print(" ");
-		lcd.print("A");
-		lcd.setCursor(9,1);
-		lcd.print(motorPowerSetpoint);
+		lcd.print(iSmoothGenerator,2);
+//		lcd.print(" ");
+		lcd.print("A  ");
+		lcd.setCursor(10,1);
+		lcd.print(pSmoothGenerator,0);
+		lcd.print( "W   ");
 //		lcd.print("pwm=");
 //		if (pwmThrottleOutput<10) lcd.print(" ");
 //		if (pwmThrottleOutput<100) lcd.print(" ");
